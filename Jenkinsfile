@@ -7,11 +7,16 @@ pipeline {
         maven 'maven-3.9.5'
     }
     
+    environment {
+        SONAR_SCANNER = tool 'sonar-scanner'
+    }
+    
     stages {
         stage('Git Checkout') {
             steps {
                 echo '<--------------- Cloning Repository --------------->'
                 git branch: 'main', 
+                    credentialsId: 'github-credentials',
                     url: 'https://github.com/Het1110/tweet-trend-app.git'
             }
         }
@@ -27,6 +32,24 @@ pipeline {
             steps {
                 echo '<--------------- Running Tests --------------->'
                 sh 'mvn test'
+            }
+        }
+        
+        stage('SonarQube Analysis') {
+            steps {
+                echo '<--------------- SonarQube Analysis Started --------------->'
+                withSonarQubeEnv('sonarcloud') {
+                    sh 'mvn sonar:sonar'
+                }
+            }
+        }
+        
+        stage('Quality Gate') {
+            steps {
+                echo '<--------------- Quality Gate Check --------------->'
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
             }
         }
     }
